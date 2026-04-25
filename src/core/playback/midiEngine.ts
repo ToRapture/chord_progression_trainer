@@ -1,4 +1,10 @@
 import { InstrumentEvent } from "../instruments/types";
+import * as Tonal from "tonal";
+
+function midiLabel(n: number): string {
+  const name = Tonal.Note.fromMidi(n) ?? "?";
+  return `${name}(${n})`;
+}
 
 let midiOutput: MIDIOutput | null = null;
 let midiAccess: MIDIAccess | null = null;
@@ -48,16 +54,22 @@ export async function playEvents(
 
   const now = performance.now();
 
-  for (const event of events) {
+  console.group(`[MIDI] playEvents (${events.length} chords)`);
+  for (let i = 0; i < events.length; i++) {
+    const event = events[i]!;
     const startMs = now + event.time * 1000;
     const endMs = startMs + event.duration * 1000;
     const vel = Math.round(Math.min(1, Math.max(0, event.velocity)) * 127);
+
+    const labels = event.notes.map((n) => midiLabel(n)).join(" ");
+    console.log(`  Chord ${i + 1}: ${labels} | t=${event.time.toFixed(2)}s dur=${event.duration.toFixed(2)}s vel=${vel}`);
 
     for (const note of event.notes) {
       midiOutput.send([0x90, clampMidi(note), vel], startMs);
       midiOutput.send([0x80, clampMidi(note), 0], endMs);
     }
   }
+  console.groupEnd();
 }
 
 export async function playChord(
@@ -73,6 +85,9 @@ export async function playChord(
   const now = performance.now();
   const endMs = now + duration * 1000;
   const vel = Math.round(Math.min(1, Math.max(0, velocity)) * 127);
+
+  const labels = notes.map((n) => midiLabel(n)).join(" ");
+  console.log(`[MIDI] playChord: ${labels} | dur=${duration.toFixed(2)}s vel=${vel}`);
 
   for (const note of notes) {
     midiOutput.send([0x90, clampMidi(note), vel], now);

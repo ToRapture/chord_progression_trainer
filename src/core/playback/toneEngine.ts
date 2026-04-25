@@ -1,4 +1,5 @@
 import * as Tone from "tone";
+import * as Tonal from "tonal";
 import { InstrumentEvent, InstrumentPresetId } from "../instruments/types";
 
 const SALAMANDER_BASE = "https://tonejs.github.io/audio/salamander/";
@@ -74,7 +75,14 @@ export async function playEvents(events: InstrumentEvent[], presetId: Instrument
   const s = await getSampler();
   const now = Tone.now();
 
-  for (const event of events) {
+  console.group(`[Sampler] playEvents (${events.length} chords, preset: ${presetId})`);
+  for (let i = 0; i < events.length; i++) {
+    const event = events[i]!;
+    const labels = event.notes.map((n) => {
+      const name = Tonal.Note.fromMidi(n) ?? "?";
+      return `${name}(${n})`;
+    }).join(" ");
+    console.log(`  Chord ${i + 1}: ${labels} | t=${event.time.toFixed(2)}s dur=${event.duration.toFixed(2)}s`);
     s.triggerAttackRelease(
       event.notes.map((n) => Tone.Frequency(n, "midi").toFrequency()),
       event.duration,
@@ -82,6 +90,7 @@ export async function playEvents(events: InstrumentEvent[], presetId: Instrument
       event.velocity
     );
   }
+  console.groupEnd();
 }
 
 export async function playChord(
@@ -93,6 +102,13 @@ export async function playChord(
   await initAudio();
   const s = await getSampler();
   const now = Tone.now();
+
+  const labels = notes.map((n) => {
+    const name = Tonal.Note.fromMidi(n) ?? "?";
+    return `${name}(${n})`;
+  }).join(" ");
+  console.log(`[Sampler] playChord: ${labels} | dur=${duration.toFixed(2)}s preset=${presetId}`);
+
   s.triggerAttackRelease(
     notes.map((n) => Tone.Frequency(n, "midi").toFrequency()),
     duration,
