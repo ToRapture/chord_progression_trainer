@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import { MusicalKey, Mode, RomanNumeralSymbol } from "../core/harmony/types";
 import { SUPPORTED_KEYS, keyLabel, keyId } from "../core/harmony/keys";
 import { ProgressionTemplate } from "../core/progressions/types";
@@ -12,10 +12,12 @@ import { getPreset } from "../core/voicing/presets";
 import { romanToChordSymbol } from "../core/harmony/roman";
 import { InstrumentEvent, InstrumentPresetId, Articulation } from "../core/instruments/types";
 import { scheduleVoicedChords } from "../core/playback/scheduler";
-import { playEvents, playChord, stop, setTempo, initAudio } from "../core/playback/toneEngine";
+import * as toneEngine from "../core/playback/toneEngine";
+import * as midiEngine from "../core/playback/midiEngine";
 import { MAJOR_DIATONIC_ROMANS, MINOR_DIATONIC_ROMANS } from "../core/harmony/functionGroups";
 
 type Tab = "trainer" | "library" | "debug";
+type SoundEngine = "sampler" | "midi";
 
 export function App() {
   const [tab, setTab] = useState<Tab>("trainer");
@@ -29,6 +31,10 @@ export function App() {
   const [tempo, setTempoState] = useState(72);
   const [choiceCount, setChoiceCount] = useState(4);
   const [showRoman, setShowRoman] = useState(false);
+  const [soundEngine, setSoundEngine] = useState<SoundEngine>("sampler");
+  const [midiOutputId, setMidiOutputId] = useState<string | null>(null);
+  const [midiOutputs, setMidiOutputs] = useState<{ id: string; name: string }[]>([]);
+  const [midiWarning, setMidiWarning] = useState<string | null>(null);
 
   const [exercise, setExercise] = useState<Exercise | null>(null);
   const [voicedChords, setVoicedChords] = useState<VoicedChord[]>([]);
@@ -40,6 +46,39 @@ export function App() {
 
   const romanPool = mode === "major" ? MAJOR_DIATONIC_ROMANS : MINOR_DIATONIC_ROMANS;
   const [allowedRomans, setAllowedRomans] = useState<RomanNumeralSymbol[]>([...romanPool]);
+
+  const handleSoundEngineChange = useCallback(async (eng: SoundEngine) => {
+    setSoundEngine(eng);
+    setMidiWarning(null);
+    if (eng === "midi") {
+      try {
+        const access = await midiEngine.requestMidiAccess();
+        const outputs = midiEngine.getMidiOutputs();
+        const list = outputs.map((o) => ({ id: o.id!, name: o.name ?? "Unknown" }));
+        setMidiOutputs(list);
+        if (list.length === 0) {
+          setMidiWarning("No MIDI outputs found. Create a virtual port with loopMIDI.");
+        } else if (!midiOutputId) {
+          midiEngine.setMidiOutput(list[0]!.id);
+          setMidiOutputId(list[0]!.id);
+        }
+      } catch {
+        setMidiWarning("MIDI access denied or not supported in this browser.");
+      }
+    }
+  }, [midiOutputId]);
+
+  const handleMidiOutputChange = useCallback((id: string) => {
+    midiEngine.setMidiOutput(id);
+    setMidiOutputId(id);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      toneEngine.stop();
+      midiEngine.stop();
+    };
+  }, []);
 
   const currentKey = useMemo<MusicalKey>(
     () => ({ tonic: key.tonic, mode }),
@@ -55,7 +94,7 @@ export function App() {
   const handleGenerateExercise = useCallback(() => {
     setFeedback(null);
     setSelectedChoiceId(null);
-    stop();
+    (soundEngine === "midi" ? midiEngine : toneEngine).stop();
     setIsPlaying(false);
 
     const options: ExerciseGenerationOptions = {
@@ -84,31 +123,37 @@ export function App() {
 
   const handlePlay = useCallback(async () => {
     if (!exercise || events.length === 0) return;
-    await initAudio();
-    setTempo(tempo);
+    if (soundEngine === "sampler") {
+      await toneEngine.initAudio();
+      toneEngine.setTempo(tempo);
+    }
     setIsPlaying(true);
     setPlaybackEvents(events);
-    await playEvents(events, presetId);
+
+    const eng = soundEngine === "midi" ? midiEngine : toneEngine;
+    await eng.playEvents(events, presetId);
+
     const maxTime = Math.max(...events.map((e) => e.time + e.duration));
     setTimeout(() => setIsPlaying(false), maxTime * 1000 + 200);
-  }, [exercise, events, presetId, tempo]);
+  }, [exercise, events, presetId, tempo, soundEngine]);
 
   const handleStop = useCallback(() => {
-    stop();
+    (soundEngine === "midi" ? midiEngine : toneEngine).stop();
     setIsPlaying(false);
-  }, []);
+  }, [soundEngine]);
 
   const handlePlayChord = useCallback(
     async (index: number) => {
       const vc = voicedChords[index];
       if (!vc) return;
-      stop();
+      const eng = soundEngine === "midi" ? midiEngine : toneEngine;
+      eng.stop();
       setIsPlaying(false);
       const secondsPerBeat = 60 / tempo;
       const secondsPerChord = secondsPerBeat * 4;
-      await playChord(vc.allNotes, secondsPerChord * 0.98, presetId);
+      await eng.playChord(vc.allNotes, secondsPerChord * 0.98, presetId);
     },
-    [voicedChords, tempo, presetId]
+    [voicedChords, tempo, presetId, soundEngine]
   );
 
   const handleSelectChoice = useCallback((choiceId: string) => {
@@ -199,6 +244,12 @@ export function App() {
             onSelectChoice={handleSelectChoice}
             onSubmitAnswer={handleSubmitAnswer}
             onPlayChord={handlePlayChord}
+            soundEngine={soundEngine}
+            midiOutputId={midiOutputId}
+            midiOutputs={midiOutputs}
+            midiWarning={midiWarning}
+            onSoundEngineChange={handleSoundEngineChange}
+            onMidiOutputChange={handleMidiOutputChange}
           />
         )}
 
@@ -251,6 +302,12 @@ interface TrainerPageProps {
   onSelectChoice: (id: string) => void;
   onSubmitAnswer: () => void;
   onPlayChord: (index: number) => void;
+  soundEngine: SoundEngine;
+  midiOutputId: string | null;
+  midiOutputs: { id: string; name: string }[];
+  midiWarning: string | null;
+  onSoundEngineChange: (eng: SoundEngine) => void;
+  onMidiOutputChange: (id: string) => void;
 }
 
 function TrainerPage(props: TrainerPageProps) {
@@ -301,6 +358,36 @@ function TrainerPage(props: TrainerPageProps) {
               <option value="strings_quartet_basic">Strings Quartet</option>
             </select>
           </div>
+          <div className="control-group">
+            <label>Sound Engine</label>
+            <select
+              value={props.soundEngine}
+              onChange={(e) => props.onSoundEngineChange(e.target.value as SoundEngine)}
+            >
+              <option value="sampler">Sampler (Piano)</option>
+              <option value="midi">MIDI Output</option>
+            </select>
+          </div>
+          {props.soundEngine === "midi" && props.midiWarning && (
+            <div className="control-group" style={{ flexBasis: "100%" }}>
+              <span style={{ color: "var(--warning)", fontSize: "0.8rem" }}>{props.midiWarning}</span>
+            </div>
+          )}
+          {props.soundEngine === "midi" && props.midiOutputs.length > 0 && (
+            <div className="control-group">
+              <label>MIDI Port</label>
+              <select
+                value={props.midiOutputId ?? ""}
+                onChange={(e) => props.onMidiOutputChange(e.target.value)}
+              >
+                {props.midiOutputs.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="control-group">
             <label>Group</label>
             <select value={props.progressionGroup} onChange={(e) => props.onProgressionGroupChange(e.target.value)}>
