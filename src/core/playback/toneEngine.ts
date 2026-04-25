@@ -40,6 +40,36 @@ let sampler: Tone.Sampler | null = null;
 let reverb: Tone.Reverb | null = null;
 let isInitialized = false;
 
+const SAMPLE_MIDI_LIST = (() => {
+  const list = Object.keys(SALAMANDER_URLS).map((name) => ({
+    name,
+    midi: Tonal.Note.midi(name) ?? 60,
+  }));
+  list.sort((a, b) => a.midi - b.midi);
+  return list;
+})();
+
+function sampleInfo(midi: number): { sample: string; shift: number } {
+  let best = SAMPLE_MIDI_LIST[0]!;
+  let bestDist = Math.abs(best.midi - midi);
+  for (let i = 1; i < SAMPLE_MIDI_LIST.length; i++) {
+    const dist = Math.abs(SAMPLE_MIDI_LIST[i]!.midi - midi);
+    if (dist < bestDist) {
+      best = SAMPLE_MIDI_LIST[i]!;
+      bestDist = dist;
+    }
+  }
+  const shift = midi - best.midi;
+  return { sample: best.name, shift };
+}
+
+function noteLabel(n: number): string {
+  const name = Tonal.Note.fromMidi(n) ?? "?";
+  const info = sampleInfo(n);
+  const shiftStr = info.shift === 0 ? "0st" : (info.shift > 0 ? `+${info.shift}st` : `${info.shift}st`);
+  return `${name}(${n})←${info.sample}.mp3(${shiftStr})`;
+}
+
 async function getSampler(): Promise<Tone.Sampler> {
   if (sampler) return sampler;
 
@@ -78,10 +108,7 @@ export async function playEvents(events: InstrumentEvent[], presetId: Instrument
   console.group(`[Sampler] playEvents (${events.length} chords, preset: ${presetId})`);
   for (let i = 0; i < events.length; i++) {
     const event = events[i]!;
-    const labels = event.notes.map((n) => {
-      const name = Tonal.Note.fromMidi(n) ?? "?";
-      return `${name}(${n})`;
-    }).join(" ");
+    const labels = event.notes.map((n) => noteLabel(n)).join(" ");
     console.log(`  Chord ${i + 1}: ${labels} | t=${event.time.toFixed(2)}s dur=${event.duration.toFixed(2)}s`);
     s.triggerAttackRelease(
       event.notes.map((n) => Tone.Frequency(n, "midi").toFrequency()),
@@ -103,10 +130,7 @@ export async function playChord(
   const s = await getSampler();
   const now = Tone.now();
 
-  const labels = notes.map((n) => {
-    const name = Tonal.Note.fromMidi(n) ?? "?";
-    return `${name}(${n})`;
-  }).join(" ");
+  const labels = notes.map((n) => noteLabel(n)).join(" ");
   console.log(`[Sampler] playChord: ${labels} | dur=${duration.toFixed(2)}s preset=${presetId}`);
 
   s.triggerAttackRelease(
