@@ -600,10 +600,12 @@ Jazz 库可以先作为进阶库，不一定在 UI 默认启用。
 
 实际支持 6 个调（MVP 要求 2 个）：
 
-| Mode  | Keys              |
-|-------|-------------------|
-| Major | C, G, F           |
-| Minor | A, D, E           |
+| Mode  | Keys                                                          |
+|-------|---------------------------------------------------------------|
+| Major | C, C#, D, D#, E, F, F#, G, G#, A, A#, B (12 keys)           |
+| Minor | C, C#, D, D#, E, F, F#, G, G#, A, A#, B (12 keys)           |
+
+共 24 个调，覆盖全部大小调。
 
 每个调通过 Tonal.js 的 `Key.majorKey(t)` / `Key.minorKey(t)` 动态解析和弦符号。
 
@@ -1281,7 +1283,7 @@ src/ui/components/
 
 当前状态：所有标准已达成，并超越了原始 MVP。
 
-1. 支持 6 个调：C/G/F Major, A/D/E Minor。（超出 MVP 的 C/A）
+1. 支持全部 24 个大小调（12 maj + 12 min）。
 2. 实际实现了 3 种练习类型：`identify_progression`、`fill_missing_chord`、`detect_replacement`。`identify_function` 和 `identify_bass_degrees` 暂未实现。
 3. 支持 4 种 Instrument preset + 2 种 Sound Engine（Sampler / MIDI）。
 4. 可以生成题目、播放题目、选择答案并显示反馈。

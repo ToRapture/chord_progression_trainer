@@ -139,8 +139,8 @@ describe("Function Groups", () => {
 });
 
 describe("Keys", () => {
-  it("has 6 supported keys", () => {
-    expect(SUPPORTED_KEYS).toHaveLength(6);
+  it("has 24 supported keys (12 major + 12 minor)", () => {
+    expect(SUPPORTED_KEYS).toHaveLength(24);
   });
 
   it("keyLabel returns readable format", () => {

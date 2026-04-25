@@ -177,7 +177,8 @@ export function App() {
   const handleModeChange = useCallback((newMode: Mode) => {
     setMode(newMode);
     setAllowedRomans(newMode === "major" ? [...MAJOR_DIATONIC_ROMANS] : [...MINOR_DIATONIC_ROMANS]);
-    setKey(newMode === "major" ? SUPPORTED_KEYS[0]! : SUPPORTED_KEYS[3]!);
+    const firstKeyForMode = SUPPORTED_KEYS.find((k) => k.mode === newMode) ?? SUPPORTED_KEYS[0]!;
+    setKey(firstKeyForMode);
   }, []);
 
   const score = getScore();
@@ -212,6 +213,7 @@ export function App() {
         {tab === "trainer" && (
           <TrainerPage
             key={keyId(currentKey)}
+            selectedKey={currentKey}
             mode={mode}
             exerciseType={exerciseType}
             presetId={presetId}
@@ -270,6 +272,7 @@ export function App() {
 }
 
 interface TrainerPageProps {
+  selectedKey: MusicalKey;
   mode: Mode;
   exerciseType: ExerciseType;
   presetId: InstrumentPresetId;
@@ -328,7 +331,7 @@ function TrainerPage(props: TrainerPageProps) {
           <div className="control-group">
             <label>Key</label>
             <select
-              value={keyId({ tonic: keysForMode[0]?.tonic ?? "C", mode: props.mode })}
+              value={keyId(props.selectedKey)}
               onChange={(e) => {
                 const parts = e.target.value.split("_");
                 props.onKeyChange({ tonic: parts[0]!, mode: parts[1] as Mode });

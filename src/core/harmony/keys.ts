@@ -1,12 +1,10 @@
 import { MusicalKey, Mode } from "./types";
 
+const CHROMATIC_TONICS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"] as const;
+
 export const SUPPORTED_KEYS: MusicalKey[] = [
-  { tonic: "C", mode: "major" },
-  { tonic: "G", mode: "major" },
-  { tonic: "F", mode: "major" },
-  { tonic: "A", mode: "minor" },
-  { tonic: "D", mode: "minor" },
-  { tonic: "E", mode: "minor" },
+  ...CHROMATIC_TONICS.map((tonic) => ({ tonic, mode: "major" as const })),
+  ...CHROMATIC_TONICS.map((tonic) => ({ tonic, mode: "minor" as const })),
 ];
 
 export function keyLabel(key: MusicalKey): string {

@@ -14,32 +14,108 @@ const HARMONIC_MINOR_ROMAN_ORDER: RomanNumeralSymbol[] = [
   "i", "ii°", "III+", "iv", "V", "VI", "vii°",
 ];
 
+function scaleDegreeToNote(
+  degree: number,
+  key: MusicalKey
+): string {
+  if (key.mode === "major") {
+    const scale = Tonal.Key.majorKey(key.tonic).scale;
+    return scale[degree - 1] ?? key.tonic;
+  }
+  const scale = Tonal.Key.minorKey(key.tonic).natural.scale as string[];
+  return scale[degree - 1] ?? key.tonic;
+}
+
+function analyzeRomanChar(roman: string): {
+  degree: number;
+  isUpper: boolean;
+  suffix: string;
+  baseQuality: string;
+} {
+  const cleaned = roman.replace(/[7majb#ø°+]/g, "");
+  const upper = /^[A-Z]/.test(cleaned);
+  const degreeMap: Record<string, number> = {
+    I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6, VII: 7,
+    i: 1, ii: 2, iii: 3, iv: 4, v: 5, vi: 6, vii: 7,
+    bIII: 3, bVI: 6, bVII: 7,
+  };
+  const degree = degreeMap[cleaned] ?? 1;
+
+  let baseQuality = "";
+  if (/^[IV]+$/.test(cleaned)) {
+    baseQuality = upper ? "M" : "m";
+  } else if (/^[iv]+$/.test(cleaned)) {
+    baseQuality = "m";
+  }
+
+  if (roman.includes("+")) baseQuality = "aug";
+  if (roman.includes("°") || roman.includes("ø")) baseQuality = "dim";
+
+  let suffix = "";
+  if (roman.endsWith("ø7")) suffix = "ø7";
+  else if (roman.endsWith("°7")) suffix = "°7";
+  else if (roman.endsWith("maj7")) suffix = "maj7";
+  else if (roman.endsWith("m7")) suffix = "m7";
+  else if (roman.endsWith("7")) suffix = "7";
+
+  return { degree, isUpper: upper, suffix, baseQuality };
+}
+
+function buildChordSymbol(
+  root: string,
+  quality: string,
+  suffix: string
+): string {
+  const base = root;
+  if (suffix === "maj7") return base + "maj7";
+  if (suffix === "m7") return base + "m7";
+  if (suffix === "7") {
+    if (quality === "M") return base + "7";
+    if (quality === "m") return base + "m7";
+    if (quality === "dim") return base + "m7b5";
+    if (quality === "aug") return base + "7";
+    return base + "7";
+  }
+  if (suffix === "ø7" || suffix === "°7") {
+    if (quality === "dim") return base + "dim7";
+    return base + "m7b5";
+  }
+  // No suffix: triad
+  if (quality === "M") return base;
+  if (quality === "m") return base + "m";
+  if (quality === "dim") return base + "dim";
+  if (quality === "aug") return base + "aug";
+  return base;
+}
+
 export function romanToChordSymbol(
   roman: RomanNumeralSymbol,
   key: MusicalKey
 ): ChordSymbol {
+  const { degree, suffix, baseQuality } = analyzeRomanChar(roman);
+  const root = scaleDegreeToNote(degree, key);
+
+  const symbol = buildChordSymbol(root, baseQuality, suffix);
+
+  const chord = Tonal.Chord.get(symbol);
+  if (chord && !chord.empty && chord.notes.length > 0) {
+    return symbol;
+  }
+
+  // Fallback: try constructing via Tonal's Key.triads for diatonic romans
   if (key.mode === "major") {
     const keyObj = Tonal.Key.majorKey(key.tonic);
-    const triads = keyObj.triads;
+    const triads = keyObj.triads as string[];
     const idx = MAJOR_ROMAN_ORDER.indexOf(roman);
-    if (idx >= 0 && idx < triads.length) {
-      return triads[idx]!;
-    }
-    return roman;
-  }
-
-  const keyObj = Tonal.Key.minorKey(key.tonic);
-  const naturalTriads = keyObj.natural.triads as string[];
-  const harmonicTriads = keyObj.harmonic.triads as string[];
-
-  const naturalIdx = NATURAL_MINOR_ROMAN_ORDER.indexOf(roman);
-  if (naturalIdx >= 0 && naturalIdx < naturalTriads.length) {
-    return naturalTriads[naturalIdx]!;
-  }
-
-  const harmonicIdx = HARMONIC_MINOR_ROMAN_ORDER.indexOf(roman);
-  if (harmonicIdx >= 0 && harmonicIdx < harmonicTriads.length) {
-    return harmonicTriads[harmonicIdx]!;
+    if (idx >= 0 && idx < triads.length) return triads[idx]!;
+  } else {
+    const keyObj = Tonal.Key.minorKey(key.tonic);
+    const nTriads = keyObj.natural.triads as string[];
+    const hTriads = keyObj.harmonic.triads as string[];
+    let idx = NATURAL_MINOR_ROMAN_ORDER.indexOf(roman);
+    if (idx >= 0 && idx < nTriads.length) return nTriads[idx]!;
+    idx = HARMONIC_MINOR_ROMAN_ORDER.indexOf(roman);
+    if (idx >= 0 && idx < hTriads.length) return hTriads[idx]!;
   }
 
   return roman;
