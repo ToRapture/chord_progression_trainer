@@ -469,3 +469,44 @@ input[type="number"] {
   padding: 0.3rem 0.8rem;
   font-size: 0.8rem;
 }
+
+.mute-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 1rem;
+  margin-bottom: 0.75rem;
+  background: rgba(243, 156, 18, 0.12);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius);
+  font-size: 0.85rem;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.mute-banner-body {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mute-banner-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.mute-banner-close {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1.3rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.mute-banner-close:hover {
+  color: var(--text);
+}

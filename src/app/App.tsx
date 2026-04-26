@@ -16,6 +16,8 @@ import * as toneEngine from "../core/playback/toneEngine";
 import * as midiEngine from "../core/playback/midiEngine";
 import { MAJOR_DIATONIC_ROMANS, MINOR_DIATONIC_ROMANS } from "../core/harmony/functionGroups";
 
+const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
 type Tab = "trainer" | "library" | "debug";
 type SoundEngine = "sampler" | "midi";
 
@@ -365,9 +367,30 @@ interface TrainerPageProps {
 
 function TrainerPage(props: TrainerPageProps) {
   const keysForMode = SUPPORTED_KEYS.filter((k) => k.mode === props.mode);
+  const [bannerDismissed, setBannerDismissed] = useState(
+    isMobile && sessionStorage.getItem("muteBannerDismissed") === "1"
+  );
+
+  const dismissBanner = () => {
+    setBannerDismissed(true);
+    sessionStorage.setItem("muteBannerDismissed", "1");
+  };
 
   return (
     <div>
+      {isMobile && !bannerDismissed && (
+        <div className="mute-banner">
+          <div className="mute-banner-body">
+            <span className="mute-banner-icon">&#x1F507;</span>
+            <span>
+              If you can't hear sound, check that your device's <strong>mute/silent switch</strong> is off.
+            </span>
+          </div>
+          <button className="mute-banner-close" onClick={dismissBanner} aria-label="Dismiss">
+            &times;
+          </button>
+        </div>
+      )}
       <div className="panel">
         <div className="panel-title">Settings</div>
         <div className="control-row">
