@@ -34,6 +34,7 @@ export function App() {
   const [choiceCount, setChoiceCount] = useState(4);
   const [showRoman, setShowRoman] = useState(false);
   const [showChoices, setShowChoices] = useState(false);
+  const [allowInversions, setAllowInversions] = useState(false);
   const [soundEngine, setSoundEngine] = useState<SoundEngine>("sampler");
   const [midiOutputId, setMidiOutputId] = useState<string | null>(null);
   const [midiOutputs, setMidiOutputs] = useState<{ id: string; name: string }[]>([]);
@@ -117,7 +118,7 @@ export function App() {
     const actualSymbols = ex.sourceProgression.roman.map((r) => romanToChordSymbol(r, currentKey));
     const romans = ex.sourceProgression.roman;
 
-    const policy = getPreset(presetId);
+    const policy = getPreset(presetId, allowInversions);
     const phrasing = voiceProgression(actualSymbols, romans, policy);
     setVoicedChords(phrasing);
 
@@ -134,7 +135,7 @@ export function App() {
       return { chordSymbols: chSymbols, voicedChords: chVoiced, events: chEvents };
     });
     setChoicesData(choiceDataArray);
-  }, [currentKey, allowedRomans, exerciseType, difficultyRange, choiceCount, progressionGroup, presetId, tempo]);
+  }, [currentKey, allowedRomans, exerciseType, difficultyRange, choiceCount, progressionGroup, presetId, tempo, allowInversions]);
 
   const handlePlay = useCallback(async () => {
     if (!exercise || events.length === 0) return;
@@ -268,6 +269,7 @@ export function App() {
             choiceCount={choiceCount}
             showRoman={showRoman}
             showChoices={showChoices}
+            allowInversions={allowInversions}
             allowedRomans={allowedRomans}
             exercise={exercise}
             voicedChords={voicedChords}
@@ -286,6 +288,7 @@ export function App() {
             onChoiceCountChange={setChoiceCount}
             onShowRomanChange={setShowRoman}
             onShowChoicesChange={setShowChoices}
+            onAllowInversionsChange={setAllowInversions}
             onGenerateExercise={handleGenerateExercise}
             onPlay={handlePlay}
             onStop={handleStop}
@@ -331,6 +334,7 @@ interface TrainerPageProps {
   choiceCount: number;
   showRoman: boolean;
   showChoices: boolean;
+  allowInversions: boolean;
   allowedRomans: RomanNumeralSymbol[];
   exercise: Exercise | null;
   voicedChords: VoicedChord[];
@@ -349,6 +353,7 @@ interface TrainerPageProps {
   onChoiceCountChange: (v: number) => void;
   onShowRomanChange: (v: boolean) => void;
   onShowChoicesChange: (v: boolean) => void;
+  onAllowInversionsChange: (v: boolean) => void;
   onGenerateExercise: () => void;
   onPlay: () => void;
   onStop: () => void;
@@ -440,6 +445,17 @@ function TrainerPage(props: TrainerPageProps) {
               <option value="sampler">Sampler (Piano)</option>
               <option value="midi">MIDI Output</option>
             </select>
+          </div>
+          <div className="control-group">
+            <label>Inversions</label>
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={props.allowInversions}
+                onChange={(e) => props.onAllowInversionsChange(e.target.checked)}
+              />
+              <span>Allow</span>
+            </label>
           </div>
           {props.soundEngine === "midi" && props.midiWarning && (
             <div className="control-group" style={{ flexBasis: "100%" }}>

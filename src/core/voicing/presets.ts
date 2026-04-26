@@ -14,6 +14,6 @@ export const PIANO: VoicingPolicy = {
   maxUpperVoiceLeap: 5,
 };
 
-export function getPreset(id: string): VoicingPolicy {
-  return PIANO;
+export function getPreset(id: string, allowInversions = false): VoicingPolicy {
+  return allowInversions ? { ...PIANO, allowInversions: true, preferRootBass: false } : PIANO;
 }
