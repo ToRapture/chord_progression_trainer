@@ -24,7 +24,7 @@ export function App() {
   const [key, setKey] = useState<MusicalKey>(SUPPORTED_KEYS[0]!);
   const [mode, setMode] = useState<Mode>("major");
   const [exerciseType, setExerciseType] = useState<ExerciseType>("identify_progression");
-  const [presetId, setPresetId] = useState<InstrumentPresetId>("piano_clear");
+  const [presetId] = useState<InstrumentPresetId>("piano");
   const [progressionGroup, setProgressionGroup] = useState<string>("all");
   const [difficultyMin, setDifficultyMin] = useState(1);
   const [difficultyMax, setDifficultyMax] = useState(5);
@@ -277,7 +277,6 @@ export function App() {
             onModeChange={handleModeChange}
             onKeyChange={setKey}
             onExerciseTypeChange={setExerciseType}
-            onPresetIdChange={setPresetId}
             onProgressionGroupChange={setProgressionGroup}
             onDifficultyMinChange={(v) => setDifficultyMin(Math.min(v, difficultyMax))}
             onDifficultyMaxChange={(v) => setDifficultyMax(Math.max(v, difficultyMin))}
@@ -341,7 +340,6 @@ interface TrainerPageProps {
   onModeChange: (mode: Mode) => void;
   onKeyChange: (key: MusicalKey) => void;
   onExerciseTypeChange: (type: ExerciseType) => void;
-  onPresetIdChange: (id: InstrumentPresetId) => void;
   onProgressionGroupChange: (group: string) => void;
   onDifficultyMinChange: (v: number) => void;
   onDifficultyMaxChange: (v: number) => void;
@@ -406,12 +404,9 @@ function TrainerPage(props: TrainerPageProps) {
           </div>
           <div className="control-group">
             <label>Instrument</label>
-            <select value={props.presetId} onChange={(e) => props.onPresetIdChange(e.target.value as InstrumentPresetId)}>
-              <option value="piano_clear">Piano Clear</option>
-              <option value="piano_smooth">Piano Smooth</option>
-              <option value="guitar_open">Guitar Open</option>
-              <option value="strings_quartet_basic">Strings Quartet</option>
-            </select>
+            <span style={{ padding: "0.4rem 0.6rem", fontSize: "0.85rem", color: "var(--text-dim)" }}>
+              Piano
+            </span>
           </div>
           <div className="control-group">
             <label>Sound Engine</label>

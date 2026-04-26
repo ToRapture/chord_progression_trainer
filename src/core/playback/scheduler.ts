@@ -5,7 +5,7 @@ import { PlaybackOptions, DEFAULT_PLAYBACK_OPTIONS } from "./types";
 export function scheduleVoicedChords(
   voicedChords: VoicedChord[],
   options: Partial<PlaybackOptions> = {},
-  presetId: InstrumentPresetId = "piano_clear",
+  presetId: InstrumentPresetId = "piano",
   articulation: Articulation = "block"
 ): InstrumentEvent[] {
   const opts: PlaybackOptions = { ...DEFAULT_PLAYBACK_OPTIONS, ...options };
@@ -25,7 +25,7 @@ export function scheduleVoicedChords(
 export function scheduleArpeggio(
   voicedChords: VoicedChord[],
   options: Partial<PlaybackOptions> = {},
-  presetId: InstrumentPresetId = "piano_clear",
+  presetId: InstrumentPresetId = "piano",
   direction: "up" | "down" = "up"
 ): InstrumentEvent[] {
   const opts: PlaybackOptions = { ...DEFAULT_PLAYBACK_OPTIONS, ...options };
@@ -60,7 +60,7 @@ export function scheduleArpeggio(
 export function scheduleStrum(
   voicedChords: VoicedChord[],
   options: Partial<PlaybackOptions> = {},
-  presetId: InstrumentPresetId = "piano_clear"
+  presetId: InstrumentPresetId = "piano"
 ): InstrumentEvent[] {
   const opts: PlaybackOptions = { ...DEFAULT_PLAYBACK_OPTIONS, ...options };
   const secondsPerBeat = 60 / opts.tempo;

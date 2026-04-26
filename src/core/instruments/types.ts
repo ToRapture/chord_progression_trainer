@@ -1,8 +1,4 @@
-export type InstrumentPresetId =
-  | "piano_clear"
-  | "piano_smooth"
-  | "guitar_open"
-  | "strings_quartet_basic";
+export type InstrumentPresetId = "piano";
 
 export type Articulation =
   | "block"

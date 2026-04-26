@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { voiceProgression } from "../core/voicing/chooseBestVoicing";
-import { getPreset, PIANO_CLEAR, PIANO_SMOOTH } from "../core/voicing/presets";
+import { getPreset, PIANO } from "../core/voicing/presets";
 import { generateCandidates } from "../core/voicing/generateCandidates";
 import { scoreVoicingCandidate } from "../core/voicing/voiceLeading";
 import { getChordPitchClasses, pitchClassToMidi } from "../core/voicing/pitchUtils";
@@ -34,37 +34,27 @@ describe("Pitch Utilities", () => {
 });
 
 describe("Voicing Presets", () => {
-  it("piano_clear prefers root bass", () => {
-    expect(PIANO_CLEAR.preferRootBass).toBe(true);
+  it("piano prefers root bass", () => {
+    expect(PIANO.preferRootBass).toBe(true);
   });
 
-  it("piano_clear does not allow inversions", () => {
-    expect(PIANO_CLEAR.allowInversions).toBe(false);
+  it("piano does not allow inversions", () => {
+    expect(PIANO.allowInversions).toBe(false);
   });
 
-  it("piano_smooth allows inversions", () => {
-    expect(PIANO_SMOOTH.allowInversions).toBe(true);
-  });
-
-  it("piano_smooth allows omit fifth", () => {
-    expect(PIANO_SMOOTH.allowOmitFifth).toBe(true);
-  });
-
-  it("getPreset returns correct preset", () => {
-    const preset = getPreset("piano_clear");
-    expect(preset.id).toBe("piano_clear");
+  it("getPreset always returns piano", () => {
+    const preset = getPreset("piano");
+    expect(preset.id).toBe("piano");
     expect(preset.preferRootBass).toBe(true);
-  });
 
-  it("getPreset returns default for unknown id", () => {
-    const preset = getPreset("unknown");
-    expect(preset.id).toBe("piano_clear");
+    const preset2 = getPreset("unknown");
+    expect(preset2.id).toBe("piano");
   });
 });
 
 describe("Candidate Generation", () => {
   it("generates candidates for C major", () => {
-    const policy = PIANO_CLEAR;
+    const policy = PIANO;
     const candidates = generateCandidates("C", policy);
     expect(candidates.length).toBeGreaterThan(0);
     for (const c of candidates) {
@@ -75,13 +65,13 @@ describe("Candidate Generation", () => {
   });
 
   it("generates candidates for Am", () => {
-    const policy = PIANO_CLEAR;
+    const policy = PIANO;
     const candidates = generateCandidates("Am", policy);
     expect(candidates.length).toBeGreaterThan(0);
   });
 
-  it("piano_clear bass uses root note", () => {
-    const policy = PIANO_CLEAR;
+  it("piano bass uses root note", () => {
+    const policy = PIANO;
     const candidates = generateCandidates("C", policy);
     for (const c of candidates) {
       const bassNote = c.bass % 12;
@@ -90,7 +80,7 @@ describe("Candidate Generation", () => {
   });
 
   it("all candidates are within range", () => {
-    const policy = PIANO_CLEAR;
+    const policy = PIANO;
     const symbols = ["C", "Dm", "G", "Am", "F"];
     for (const sym of symbols) {
       const candidates = generateCandidates(sym, policy);
@@ -110,7 +100,7 @@ describe("Voice Leading", () => {
     const romanProgression = ["I", "vi"];
     const key = { tonic: "C", mode: "major" as const };
     const symbols = romanProgression.map((r) => romanToChordSymbol(r, key));
-    const policy = PIANO_SMOOTH;
+    const policy = PIANO;
 
     const voiced = voiceProgression(symbols, romanProgression, policy);
     expect(voiced).toHaveLength(2);
@@ -125,8 +115,8 @@ describe("Voice Leading", () => {
   });
 
   it("smooth voicing reduces total movement", () => {
-    const cCandidates = generateCandidates("C", PIANO_SMOOTH);
-    const amCandidates = generateCandidates("Am", PIANO_SMOOTH);
+    const cCandidates = generateCandidates("C", PIANO);
+    const amCandidates = generateCandidates("Am", PIANO);
 
     expect(cCandidates.length).toBeGreaterThan(0);
     expect(amCandidates.length).toBeGreaterThan(0);
@@ -144,7 +134,7 @@ describe("Voice Leading", () => {
           allNotes: [first.bass, ...first.upperVoices],
         },
         cand,
-        PIANO_SMOOTH,
+        PIANO,
         "Am"
       );
       minScore = Math.min(minScore, score);
@@ -159,7 +149,7 @@ describe("Voiced Chord Output", () => {
     const key = { tonic: "C", mode: "major" as const };
     const symbols = romanProgression.map((r) => romanToChordSymbol(r, key));
 
-    const voiced = voiceProgression(symbols, romanProgression, PIANO_CLEAR);
+    const voiced = voiceProgression(symbols, romanProgression, PIANO);
     expect(voiced).toHaveLength(4);
   });
 
@@ -168,7 +158,7 @@ describe("Voiced Chord Output", () => {
     const key = { tonic: "C", mode: "major" as const };
     const symbols = romanProgression.map((r) => romanToChordSymbol(r, key));
 
-    const voiced = voiceProgression(symbols, romanProgression, PIANO_CLEAR);
+    const voiced = voiceProgression(symbols, romanProgression, PIANO);
     for (const vc of voiced) {
       expect(vc.bass).toBeGreaterThan(0);
       expect(vc.upperVoices.length).toBeGreaterThan(0);
@@ -177,12 +167,12 @@ describe("Voiced Chord Output", () => {
     }
   });
 
-  it("piano_clear bass is clearly below upper voices", () => {
+  it("piano bass is clearly below upper voices", () => {
     const romanProgression = ["I", "vi", "IV", "V"];
     const key = { tonic: "C", mode: "major" as const };
     const symbols = romanProgression.map((r) => romanToChordSymbol(r, key));
 
-    const voiced = voiceProgression(symbols, romanProgression, PIANO_CLEAR);
+    const voiced = voiceProgression(symbols, romanProgression, PIANO);
     for (const vc of voiced) {
       const minUpper = Math.min(...vc.upperVoices);
       expect(vc.bass).toBeLessThan(minUpper);
@@ -194,7 +184,7 @@ describe("Voiced Chord Output", () => {
     const key = { tonic: "C", mode: "major" as const };
     const symbols = romanProgression.map((r) => romanToChordSymbol(r, key));
 
-    const voiced = voiceProgression(symbols, romanProgression, PIANO_CLEAR);
+    const voiced = voiceProgression(symbols, romanProgression, PIANO);
     for (const vc of voiced) {
       expect(vc.bass).toBeGreaterThanOrEqual(36);
       expect(vc.bass).toBeLessThanOrEqual(60);
@@ -206,11 +196,11 @@ describe("Voiced Chord Output", () => {
     const key = { tonic: "C", mode: "major" as const };
     const symbols = romanProgression.map((r) => romanToChordSymbol(r, key));
 
-    const voiced = voiceProgression(symbols, romanProgression, PIANO_SMOOTH);
+    const voiced = voiceProgression(symbols, romanProgression, PIANO);
     for (const vc of voiced) {
       for (const v of vc.upperVoices) {
-        expect(v).toBeGreaterThanOrEqual(PIANO_SMOOTH.upperRange[0] - 12);
-        expect(v).toBeLessThanOrEqual(PIANO_SMOOTH.upperRange[1] + 12);
+        expect(v).toBeGreaterThanOrEqual(PIANO.upperRange[0] - 12);
+        expect(v).toBeLessThanOrEqual(PIANO.upperRange[1] + 12);
       }
     }
   });
