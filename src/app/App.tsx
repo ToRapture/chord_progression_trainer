@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect } from "react";
-import { MusicalKey, Mode, RomanNumeralSymbol } from "../core/harmony/types";
+import { MusicalKey, Mode, RomanNumeralSymbol, ChordSymbol } from "../core/harmony/types";
 import { SUPPORTED_KEYS, keyLabel, keyId } from "../core/harmony/keys";
 import { ProgressionTemplate } from "../core/progressions/types";
 import { getAllProgressions, getProgressionsByGroup } from "../core/progressions/index";
@@ -31,6 +31,7 @@ export function App() {
   const [tempo, setTempoState] = useState(72);
   const [choiceCount, setChoiceCount] = useState(4);
   const [showRoman, setShowRoman] = useState(false);
+  const [showChoices, setShowChoices] = useState(false);
   const [soundEngine, setSoundEngine] = useState<SoundEngine>("sampler");
   const [midiOutputId, setMidiOutputId] = useState<string | null>(null);
   const [midiOutputs, setMidiOutputs] = useState<{ id: string; name: string }[]>([]);
@@ -43,6 +44,7 @@ export function App() {
   const [feedback, setFeedback] = useState<{ correct: boolean; explanation: string } | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackEvents, setPlaybackEvents] = useState<InstrumentEvent[]>([]);
+  const [choicesData, setChoicesData] = useState<{ chordSymbols: ChordSymbol[]; voicedChords: VoicedChord[]; events: InstrumentEvent[] }[]>([]);
 
   const romanPool = mode === "major" ? MAJOR_DIATONIC_ROMANS : MINOR_DIATONIC_ROMANS;
   const [allowedRomans, setAllowedRomans] = useState<RomanNumeralSymbol[]>([...romanPool]);
@@ -119,6 +121,17 @@ export function App() {
 
     const scheduled = scheduleVoicedChords(phrasing, { tempo, beatsPerChord: 4 }, presetId, "block");
     setEvents(scheduled);
+
+    const choiceDataArray = ex.choices.map((choice) => {
+      if (!choice.roman || choice.roman.length === 0) {
+        return { chordSymbols: [], voicedChords: [], events: [] };
+      }
+      const chSymbols = choice.roman.map((r) => romanToChordSymbol(r, currentKey));
+      const chVoiced = voiceProgression(chSymbols, choice.roman, policy);
+      const chEvents = scheduleVoicedChords(chVoiced, { tempo, beatsPerChord: 4 }, presetId, "block");
+      return { chordSymbols: chSymbols, voicedChords: chVoiced, events: chEvents };
+    });
+    setChoicesData(choiceDataArray);
   }, [currentKey, allowedRomans, exerciseType, difficultyRange, choiceCount, progressionGroup, presetId, tempo]);
 
   const handlePlay = useCallback(async () => {
@@ -156,6 +169,34 @@ export function App() {
     [voicedChords, tempo, presetId, soundEngine]
   );
 
+  const handlePlayChoice = useCallback(async (choiceIndex: number) => {
+    const data = choicesData[choiceIndex];
+    if (!data || data.events.length === 0) return;
+    if (soundEngine === "sampler") {
+      await toneEngine.initAudio();
+      toneEngine.setTempo(tempo);
+    }
+    setIsPlaying(true);
+    const eng = soundEngine === "midi" ? midiEngine : toneEngine;
+    eng.stop();
+    await eng.playEvents(data.events, presetId);
+    const maxTime = Math.max(...data.events.map((e) => e.time + e.duration));
+    setTimeout(() => setIsPlaying(false), maxTime * 1000 + 200);
+  }, [choicesData, presetId, tempo, soundEngine]);
+
+  const handlePlayChoiceChord = useCallback(async (choiceIndex: number, chordIndex: number) => {
+    const data = choicesData[choiceIndex];
+    if (!data) return;
+    const vc = data.voicedChords[chordIndex];
+    if (!vc) return;
+    const eng = soundEngine === "midi" ? midiEngine : toneEngine;
+    eng.stop();
+    setIsPlaying(false);
+    const secondsPerBeat = 60 / tempo;
+    const secondsPerChord = secondsPerBeat * 4;
+    await eng.playChord(vc.allNotes, secondsPerChord * 0.98, presetId);
+  }, [choicesData, tempo, presetId, soundEngine]);
+
   const handleSelectChoice = useCallback((choiceId: string) => {
     if (feedback) return;
     setSelectedChoiceId(choiceId);
@@ -172,6 +213,7 @@ export function App() {
         ? ` You selected: ${selectedChoice.label}`
         : ""),
     });
+    setShowChoices(true);
   }, [exercise, selectedChoiceId]);
 
   const handleModeChange = useCallback((newMode: Mode) => {
@@ -223,9 +265,11 @@ export function App() {
             tempo={tempo}
             choiceCount={choiceCount}
             showRoman={showRoman}
+            showChoices={showChoices}
             allowedRomans={allowedRomans}
             exercise={exercise}
             voicedChords={voicedChords}
+            choicesData={choicesData}
             selectedChoiceId={selectedChoiceId}
             feedback={feedback}
             isPlaying={isPlaying}
@@ -240,12 +284,15 @@ export function App() {
             onTempoChange={setTempoState}
             onChoiceCountChange={setChoiceCount}
             onShowRomanChange={setShowRoman}
+            onShowChoicesChange={setShowChoices}
             onGenerateExercise={handleGenerateExercise}
             onPlay={handlePlay}
             onStop={handleStop}
             onSelectChoice={handleSelectChoice}
             onSubmitAnswer={handleSubmitAnswer}
             onPlayChord={handlePlayChord}
+            onPlayChoice={handlePlayChoice}
+            onPlayChoiceChord={handlePlayChoiceChord}
             soundEngine={soundEngine}
             midiOutputId={midiOutputId}
             midiOutputs={midiOutputs}
@@ -282,9 +329,11 @@ interface TrainerPageProps {
   tempo: number;
   choiceCount: number;
   showRoman: boolean;
+  showChoices: boolean;
   allowedRomans: RomanNumeralSymbol[];
   exercise: Exercise | null;
   voicedChords: VoicedChord[];
+  choicesData: { chordSymbols: ChordSymbol[]; voicedChords: VoicedChord[]; events: InstrumentEvent[] }[];
   selectedChoiceId: string | null;
   feedback: { correct: boolean; explanation: string } | null;
   isPlaying: boolean;
@@ -299,12 +348,15 @@ interface TrainerPageProps {
   onTempoChange: (v: number) => void;
   onChoiceCountChange: (v: number) => void;
   onShowRomanChange: (v: boolean) => void;
+  onShowChoicesChange: (v: boolean) => void;
   onGenerateExercise: () => void;
   onPlay: () => void;
   onStop: () => void;
   onSelectChoice: (id: string) => void;
   onSubmitAnswer: () => void;
   onPlayChord: (index: number) => void;
+  onPlayChoice: (choiceIndex: number) => void;
+  onPlayChoiceChord: (choiceIndex: number, chordIndex: number) => void;
   soundEngine: SoundEngine;
   midiOutputId: string | null;
   midiOutputs: { id: string; name: string }[];
@@ -502,8 +554,20 @@ function TrainerPage(props: TrainerPageProps) {
 
           <div className="panel">
             <div className="panel-title">Answer</div>
-            <div className="choice-list">
-              {props.exercise.choices.map((choice) => {
+
+            {!props.feedback && (
+              <div className="toggle-row">
+                <button
+                  className={`toggle-btn ${props.showChoices ? "active" : ""}`}
+                  onClick={() => props.onShowChoicesChange(!props.showChoices)}
+                >
+                  {props.showChoices ? "Hide" : "Show"} Choices
+                </button>
+              </div>
+            )}
+
+            <div className={`choice-list ${!props.feedback && !props.showChoices ? "hidden-progression" : ""}`}>
+              {props.exercise.choices.map((choice, ci) => {
                 let cls = "choice-item";
                 if (props.selectedChoiceId === choice.id) cls += " selected";
                 if (props.feedback) {
@@ -514,13 +578,54 @@ function TrainerPage(props: TrainerPageProps) {
                   <div
                     key={choice.id}
                     className={cls}
-                    onClick={() => props.onSelectChoice(choice.id)}
+                    onClick={() => !props.feedback && props.onSelectChoice(choice.id)}
                   >
-                    {choice.label}
-                    {choice.functions && choice.functions.length > 0 && (
-                      <span style={{ marginLeft: "0.5rem", color: "var(--text-dim)", fontSize: "0.8rem" }}>
-                        [{choice.functions.join(" → ")}]
-                      </span>
+                    <div className="choice-label">
+                      {choice.label}
+                      {choice.functions && choice.functions.length > 0 && (
+                        <span style={{ marginLeft: "0.5rem", color: "var(--text-dim)", fontSize: "0.8rem" }}>
+                          [{choice.functions.join(" → ")}]
+                        </span>
+                      )}
+                    </div>
+                    {props.feedback && props.choicesData[ci] && props.choicesData[ci].chordSymbols.length > 0 && (
+                      <div className="choice-details">
+                        <div className="choice-chords">
+                          {props.choicesData[ci].chordSymbols.map((sym, si) => (
+                            <span
+                              key={si}
+                              className="progression-chord clickable"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                props.onPlayChoiceChord(ci, si);
+                              }}
+                            >
+                              {sym}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="choice-actions">
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              props.onPlayChoice(ci);
+                            }}
+                            disabled={props.isPlaying}
+                          >
+                            {props.isPlaying ? "Playing..." : "Play"}
+                          </button>
+                          <button
+                            className="btn btn-danger btn-sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              props.onStop();
+                            }}
+                          >
+                            Stop
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </div>
                 );
