@@ -69,6 +69,14 @@ npm run test       # 运行测试 (104 tests)
 
 显示当前题目的完整内部状态（JSON），方便开发和调试。
 
+## 部署到 GitHub Pages
+
+```bash
+npm run deploy      # 构建并推送到 gh-pages 分支
+```
+
+部署后访问 `https://torapture.github.io/chord_progression_trainer/`。如需修改部署路径，编辑 `vite.config.ts` 中的 `base` 字段。
+
 ## 技术栈
 
 - **Vite + React 18 + TypeScript** — 前端框架
