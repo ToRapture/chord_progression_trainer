@@ -79,7 +79,8 @@ function generateIdentifyProgressionExercise(
     source,
     options.choiceCount - 1,
     options.key.mode,
-    options.allowedRomans
+    options.allowedRomans,
+    options.difficultyRange
   );
 
   const correctChoice = createProgressionChoice("correct", source, true);

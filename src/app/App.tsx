@@ -235,8 +235,8 @@ export function App() {
             onExerciseTypeChange={setExerciseType}
             onPresetIdChange={setPresetId}
             onProgressionGroupChange={setProgressionGroup}
-            onDifficultyMinChange={setDifficultyMin}
-            onDifficultyMaxChange={setDifficultyMax}
+            onDifficultyMinChange={(v) => setDifficultyMin(Math.min(v, difficultyMax))}
+            onDifficultyMaxChange={(v) => setDifficultyMax(Math.max(v, difficultyMin))}
             onTempoChange={setTempoState}
             onChoiceCountChange={setChoiceCount}
             onShowRomanChange={setShowRoman}

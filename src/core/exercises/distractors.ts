@@ -20,10 +20,18 @@ export function generateDistractorProgressions(
   answer: ProgressionTemplate,
   count: number,
   mode: "major" | "minor",
-  allowedRomans: RomanNumeralSymbol[]
+  allowedRomans: RomanNumeralSymbol[],
+  difficultyRange: [number, number]
 ): ProgressionTemplate[] {
   const candidates = getProgressionsByAllowedRomans(allowedRomans, mode);
-  const others = candidates.filter((p) => p.id !== answer.id && p.roman.length === answer.roman.length);
+  const others = candidates.filter(
+    (p) =>
+      p.id !== answer.id &&
+      p.roman.length === answer.roman.length &&
+      p.roman.join(" → ") !== answer.roman.join(" → ") &&
+      p.difficulty >= difficultyRange[0] &&
+      p.difficulty <= difficultyRange[1]
+  );
 
   const preferSameLength = others.filter((p) => p.roman.length === answer.roman.length);
   const pool = preferSameLength.length >= count * 3 ? preferSameLength : others;
