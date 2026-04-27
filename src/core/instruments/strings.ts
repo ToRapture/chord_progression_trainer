@@ -21,11 +21,12 @@ export function voiceStringQuartet(
   const root = pcs[0]!;
   const third = pcs[1] ?? pcs[0]!;
   const fifth = pcs[2] ?? pcs[0]!;
+  const seventh = pcs[3] ?? pcs[0]!;
 
   let cello = pitchClassToMidi(root, 2);
   let viola = pitchClassToMidi(fifth, 3);
   let violin2 = pitchClassToMidi(third, 4);
-  let violin1 = pitchClassToMidi(root, 5);
+  let violin1 = pitchClassToMidi(seventh, 5);
 
   if (previous) {
     const prevMidi = [previous.cello, previous.viola, previous.violin2, previous.violin1];

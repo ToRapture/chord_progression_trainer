@@ -30,8 +30,10 @@ export function generateCandidates(
       let oct = startOct;
 
       const sortedPCs = [...pcs].sort();
+      const nonBassPCs = sortedPCs.filter((pc) => pc !== root);
+      const upperPriority = [...nonBassPCs, ...sortedPCs];
       for (let i = 0; i < voiceCount; i++) {
-        const pc = sortedPCs[i % sortedPCs.length];
+        const pc = upperPriority[i % upperPriority.length];
         let midi = pitchClassToMidi(pc, oct);
 
         if (upperVoices.length > 0 && midi <= upperVoices[upperVoices.length - 1]) {
@@ -101,8 +103,10 @@ export function generateCandidatesWithInversions(
         const upperVoices: MidiNote[] = [];
         let oct = startOct;
 
+        const nonBassPCs = sortedPCs.filter((pc) => pc !== bassPC);
+        const upperPriority = [...nonBassPCs, ...sortedPCs];
         for (let i = 0; i < voiceCount; i++) {
-          const pc = sortedPCs[i % sortedPCs.length];
+          const pc = upperPriority[i % upperPriority.length];
           let midi = pitchClassToMidi(pc, oct);
 
           if (upperVoices.length > 0 && midi <= upperVoices[upperVoices.length - 1]) {
