@@ -15,6 +15,8 @@ import { scheduleVoicedChords } from "../core/playback/scheduler";
 import * as toneEngine from "../core/playback/toneEngine";
 import * as midiEngine from "../core/playback/midiEngine";
 import { MAJOR_DIATONIC_ROMANS, MINOR_DIATONIC_ROMANS } from "../core/harmony/functionGroups";
+import { chordNotes } from "../core/harmony/chordSymbols";
+import * as Tonal from "tonal";
 
 const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
@@ -200,6 +202,16 @@ export function App() {
     await eng.playChord(vc.allNotes, secondsPerChord * 0.98, presetId);
   }, [choicesData, tempo, presetId, soundEngine]);
 
+  const handlePlayNotes = useCallback(async (notes: number[]) => {
+    if (notes.length === 0) return;
+    const eng = soundEngine === "midi" ? midiEngine : toneEngine;
+    eng.stop();
+    setIsPlaying(false);
+    const secondsPerBeat = 60 / tempo;
+    const secondsPerChord = secondsPerBeat * 4;
+    await eng.playChord(notes, secondsPerChord * 0.98, presetId);
+  }, [tempo, presetId, soundEngine]);
+
   const handleSelectChoice = useCallback((choiceId: string) => {
     if (feedback) return;
     setSelectedChoiceId(choiceId);
@@ -297,6 +309,7 @@ export function App() {
             onPlayChord={handlePlayChord}
             onPlayChoice={handlePlayChoice}
             onPlayChoiceChord={handlePlayChoiceChord}
+            onPlayNotes={handlePlayNotes}
             soundEngine={soundEngine}
             midiOutputId={midiOutputId}
             midiOutputs={midiOutputs}
@@ -362,6 +375,7 @@ interface TrainerPageProps {
   onPlayChord: (index: number) => void;
   onPlayChoice: (choiceIndex: number) => void;
   onPlayChoiceChord: (choiceIndex: number, chordIndex: number) => void;
+  onPlayNotes: (notes: number[]) => void;
   soundEngine: SoundEngine;
   midiOutputId: string | null;
   midiOutputs: { id: string; name: string }[];
@@ -370,11 +384,51 @@ interface TrainerPageProps {
   onMidiOutputChange: (id: string) => void;
 }
 
+function getSeventhRoman(roman: string, mode: Mode): string {
+  if (mode === "major") {
+    const map: Record<string, string> = {
+      I: "Imaj7", ii: "iim7", iii: "iiim7",
+      IV: "IVmaj7", V: "V7", vi: "vim7", "vii°": "viiø7",
+    };
+    return map[roman] ?? roman;
+  }
+  const map: Record<string, string> = {
+    i: "im7", "ii°": "iiø7", III: "IIImaj7",
+    iv: "ivm7", v: "vm7", V: "V7",
+    VI: "VImaj7", VII: "VII7", "vii°": "viiø7",
+  };
+  return map[roman] ?? roman;
+}
+
 function TrainerPage(props: TrainerPageProps) {
   const keysForMode = SUPPORTED_KEYS.filter((k) => k.mode === props.mode);
+  const [showCommonChords, setShowCommonChords] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(
     isMobile && sessionStorage.getItem("muteBannerDismissed") === "1"
   );
+
+  const commonChordsData = useMemo(() => {
+    const diatonicRomans = props.mode === "major" ? MAJOR_DIATONIC_ROMANS : MINOR_DIATONIC_ROMANS;
+    const seen = new Set<string>();
+    const entries: { degree: string; triad: string; seventh: string; triadNotes: number[]; seventhNotes: number[] }[] = [];
+
+    for (const roman of diatonicRomans) {
+      const baseRoman = roman.replace(/7$/, "");
+      if (seen.has(baseRoman)) continue;
+      seen.add(baseRoman);
+
+      const triadSymbol = romanToChordSymbol(baseRoman, props.selectedKey);
+      const seventhRoman = getSeventhRoman(baseRoman, props.mode);
+      const seventhSymbol = romanToChordSymbol(seventhRoman, props.selectedKey);
+
+      const triadNotes = chordNotes(triadSymbol).map((n) => Tonal.Note.midi(n + "4") ?? 60);
+      const seventhNotes = chordNotes(seventhSymbol).map((n) => Tonal.Note.midi(n + "4") ?? 60);
+
+      entries.push({ degree: baseRoman, triad: triadSymbol, seventh: seventhSymbol, triadNotes, seventhNotes });
+    }
+
+    return entries;
+  }, [props.selectedKey, props.mode]);
 
   const dismissBanner = () => {
     setBannerDismissed(true);
@@ -543,6 +597,41 @@ function TrainerPage(props: TrainerPageProps) {
             Rate: <span className="score-value">{props.score.percentage}%</span>
           </span>
         </div>
+      </div>
+
+      <div className="panel">
+        <div className="panel-title">Common Chords</div>
+        <div className="toggle-row">
+          <button
+            className={`toggle-btn ${showCommonChords ? "active" : ""}`}
+            onClick={() => setShowCommonChords(!showCommonChords)}
+          >
+            {showCommonChords ? "Hide" : "Show"}
+          </button>
+        </div>
+        {showCommonChords && (
+          <div className="common-chords-container">
+            <div className="common-chords-row">
+              {commonChordsData.map((entry) => (
+                <div key={entry.degree} className="common-chord-col">
+                  <span className="common-chord-degree">{entry.degree}</span>
+                  <span
+                    className="progression-chord clickable"
+                    onClick={() => props.onPlayNotes(entry.triadNotes)}
+                  >
+                    {entry.triad}
+                  </span>
+                  <span
+                    className="progression-chord clickable"
+                    onClick={() => props.onPlayNotes(entry.seventhNotes)}
+                  >
+                    {entry.seventh}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {props.exercise && (

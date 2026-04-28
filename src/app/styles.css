@@ -528,3 +528,29 @@ input[type="number"] {
   accent-color: var(--accent);
   cursor: pointer;
 }
+
+.common-chords-container {
+  overflow-x: auto;
+}
+
+.common-chords-row {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.common-chord-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.common-chord-degree {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  font-family: "Consolas", monospace;
+  white-space: nowrap;
+}
+
+

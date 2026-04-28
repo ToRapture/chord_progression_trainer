@@ -16,13 +16,16 @@ const HARMONIC_MINOR_ROMAN_ORDER: RomanNumeralSymbol[] = [
 
 function scaleDegreeToNote(
   degree: number,
-  key: MusicalKey
+  key: MusicalKey,
+  useHarmonic = false
 ): string {
   if (key.mode === "major") {
     const scale = Tonal.Key.majorKey(key.tonic).scale;
     return scale[degree - 1] ?? key.tonic;
   }
-  const scale = Tonal.Key.minorKey(key.tonic).natural.scale as string[];
+  const scale = useHarmonic
+    ? (Tonal.Key.minorKey(key.tonic).harmonic.scale as string[])
+    : (Tonal.Key.minorKey(key.tonic).natural.scale as string[]);
   return scale[degree - 1] ?? key.tonic;
 }
 
@@ -76,10 +79,8 @@ function buildChordSymbol(
     if (quality === "aug") return base + "7";
     return base + "7";
   }
-  if (suffix === "ø7" || suffix === "°7") {
-    if (quality === "dim") return base + "dim7";
-    return base + "m7b5";
-  }
+  if (suffix === "ø7") return base + "m7b5";
+  if (suffix === "°7") return base + "dim7";
   // No suffix: triad
   if (quality === "M") return base;
   if (quality === "m") return base + "m";
@@ -93,7 +94,8 @@ export function romanToChordSymbol(
   key: MusicalKey
 ): ChordSymbol {
   const { degree, suffix, baseQuality } = analyzeRomanChar(roman);
-  const root = scaleDegreeToNote(degree, key);
+  const useHarmonic = key.mode === "minor" && roman.startsWith("vii");
+  const root = scaleDegreeToNote(degree, key, useHarmonic);
 
   const symbol = buildChordSymbol(root, baseQuality, suffix);
 
