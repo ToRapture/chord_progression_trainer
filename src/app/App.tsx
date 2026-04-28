@@ -432,6 +432,26 @@ function TrainerPage(props: TrainerPageProps) {
       });
     }
 
+    const tonicRoman = diatonicRomans[0]!.replace(/7$/, "");
+    const domRoman = tonicRoman === "i" ? "V" : "V";
+    const dom7Roman = tonicRoman === "i" ? "V7" : "V7";
+    const tonicSymbol = romanToChordSymbol(tonicRoman, props.selectedKey);
+    const domSymbol = romanToChordSymbol(domRoman, props.selectedKey);
+    const dom7Symbol = romanToChordSymbol(dom7Roman, props.selectedKey);
+    const seventhRoman = getSeventhRoman(tonicRoman, props.mode);
+    const seventhSymbol = romanToChordSymbol(seventhRoman, props.selectedKey);
+
+    const cadenceTriad = voiceProgression([domSymbol, tonicSymbol], [domRoman, tonicRoman], policy);
+    const cadenceSeventh = voiceProgression([dom7Symbol, seventhSymbol], [dom7Roman, seventhRoman], policy);
+
+    entries.push({
+      degree: tonicRoman + " (V→I)",
+      triad: tonicSymbol,
+      seventh: seventhSymbol,
+      triadNotes: cadenceTriad[1]?.allNotes ?? [],
+      seventhNotes: cadenceSeventh[1]?.allNotes ?? [],
+    });
+
     return entries;
   }, [props.selectedKey, props.mode, props.presetId, props.allowInversions]);
 
