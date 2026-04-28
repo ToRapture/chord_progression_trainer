@@ -15,8 +15,6 @@ import { scheduleVoicedChords } from "../core/playback/scheduler";
 import * as toneEngine from "../core/playback/toneEngine";
 import * as midiEngine from "../core/playback/midiEngine";
 import { MAJOR_DIATONIC_ROMANS, MINOR_DIATONIC_ROMANS } from "../core/harmony/functionGroups";
-import { chordNotes } from "../core/harmony/chordSymbols";
-import * as Tonal from "tonal";
 
 const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
@@ -411,6 +409,7 @@ function TrainerPage(props: TrainerPageProps) {
     const diatonicRomans = props.mode === "major" ? MAJOR_DIATONIC_ROMANS : MINOR_DIATONIC_ROMANS;
     const seen = new Set<string>();
     const entries: { degree: string; triad: string; seventh: string; triadNotes: number[]; seventhNotes: number[] }[] = [];
+    const policy = getPreset(props.presetId, props.allowInversions);
 
     for (const roman of diatonicRomans) {
       const baseRoman = roman.replace(/7$/, "");
@@ -421,14 +420,20 @@ function TrainerPage(props: TrainerPageProps) {
       const seventhRoman = getSeventhRoman(baseRoman, props.mode);
       const seventhSymbol = romanToChordSymbol(seventhRoman, props.selectedKey);
 
-      const triadNotes = chordNotes(triadSymbol).map((n) => Tonal.Note.midi(n + "4") ?? 60);
-      const seventhNotes = chordNotes(seventhSymbol).map((n) => Tonal.Note.midi(n + "4") ?? 60);
+      const triadVoiced = voiceProgression([triadSymbol], [baseRoman], policy);
+      const seventhVoiced = voiceProgression([seventhSymbol], [seventhRoman], policy);
 
-      entries.push({ degree: baseRoman, triad: triadSymbol, seventh: seventhSymbol, triadNotes, seventhNotes });
+      entries.push({
+        degree: baseRoman,
+        triad: triadSymbol,
+        seventh: seventhSymbol,
+        triadNotes: triadVoiced[0]?.allNotes ?? [],
+        seventhNotes: seventhVoiced[0]?.allNotes ?? [],
+      });
     }
 
     return entries;
-  }, [props.selectedKey, props.mode]);
+  }, [props.selectedKey, props.mode, props.presetId, props.allowInversions]);
 
   const dismissBanner = () => {
     setBannerDismissed(true);
