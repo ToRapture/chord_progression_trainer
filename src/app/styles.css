@@ -531,19 +531,33 @@ input[type="number"] {
 
 .common-chords-container {
   overflow-x: auto;
+  padding-bottom: 0.25rem;
 }
 
 .common-chords-row {
   display: flex;
-  gap: 0.75rem;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+  min-width: max-content;
 }
 
 .common-chord-col {
   display: flex;
   flex-direction: column;
   align-items: center;
+  flex: 0 0 auto;
   gap: 0.35rem;
-  min-width: 0;
+  min-width: max-content;
+}
+
+.common-chord-col .progression-chord {
+  display: block;
+  min-width: 3.25rem;
+  padding: 0.3rem 0.6rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .common-chord-degree {
@@ -552,5 +566,4 @@ input[type="number"] {
   font-family: "Consolas", monospace;
   white-space: nowrap;
 }
-
 
