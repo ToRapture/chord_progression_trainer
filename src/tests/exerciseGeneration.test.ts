@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { generateExercise } from "../core/exercises/generateExercise";
 import { ExerciseGenerationOptions } from "../core/exercises/types";
 import { checkAnswer, getScore, resetScore } from "../core/exercises/scoring";
@@ -22,7 +22,9 @@ describe("Exercise Generation - Identify Progression", () => {
     expect(ex.sourceProgression).toBeTruthy();
     expect(ex.renderedChords.length).toBeGreaterThan(0);
     expect(ex.prompt).toBeTruthy();
-    expect(ex.choices.length).toBe(4);
+    expect(ex.choices.length).toBeGreaterThanOrEqual(1);
+    expect(ex.choices.length).toBeLessThanOrEqual(options.choiceCount);
+    expect(new Set(ex.choices.map((choice) => choice.label)).size).toBe(ex.choices.length);
     expect(ex.answerChoiceId).toBeTruthy();
     expect(ex.explanation).toBeTruthy();
   });
@@ -56,6 +58,22 @@ describe("Exercise Generation - Identify Progression", () => {
     expect(correctCount).toBe(1);
   });
 
+  it("caps choices to available unique candidates instead of duplicating", () => {
+    const options: ExerciseGenerationOptions = {
+      key: { tonic: "C", mode: "major" },
+      allowedRomans: ["I", "V"],
+      exerciseType: "identify_progression",
+      difficultyRange: [1, 1],
+      choiceCount: 7,
+    };
+
+    const ex = generateExercise(options);
+    const uniqueLabels = new Set(ex.choices.map((choice) => choice.label));
+
+    expect(ex.choices.length).toBeLessThanOrEqual(options.choiceCount);
+    expect(ex.choices.length).toBe(uniqueLabels.size);
+  });
+
   it("works in minor key", () => {
     const options: ExerciseGenerationOptions = {
       key: { tonic: "A", mode: "minor" },
@@ -73,6 +91,7 @@ describe("Exercise Generation - Identify Progression", () => {
 
 describe("Exercise Generation - Fill Missing Chord", () => {
   it("generates a fill-in exercise", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
     const options: ExerciseGenerationOptions = {
       key: { tonic: "C", mode: "major" },
       allowedRomans: MAJOR_DIATONIC_ROMANS,
@@ -82,6 +101,7 @@ describe("Exercise Generation - Fill Missing Chord", () => {
     };
 
     const ex = generateExercise(options);
+    vi.restoreAllMocks();
     expect(ex.type).toBe("fill_missing_chord");
 
     if (ex.type === "fill_missing_chord") {

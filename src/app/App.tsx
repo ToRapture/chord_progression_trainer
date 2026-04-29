@@ -15,6 +15,13 @@ import { scheduleVoicedChords } from "../core/playback/scheduler";
 import * as toneEngine from "../core/playback/toneEngine";
 import * as midiEngine from "../core/playback/midiEngine";
 import { MAJOR_DIATONIC_ROMANS, MINOR_DIATONIC_ROMANS } from "../core/harmony/functionGroups";
+import {
+  CHOICE_COUNT_OPTIONS,
+  DIFFICULTY_OPTIONS,
+  TEMPO_OPTIONS,
+  applyDifficultyMaxChange,
+  applyDifficultyMinChange,
+} from "./trainerControlOptions";
 
 const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
@@ -292,8 +299,16 @@ export function App() {
             onKeyChange={setKey}
             onExerciseTypeChange={setExerciseType}
             onProgressionGroupChange={setProgressionGroup}
-            onDifficultyMinChange={(v) => setDifficultyMin(Math.min(v, difficultyMax))}
-            onDifficultyMaxChange={(v) => setDifficultyMax(Math.max(v, difficultyMin))}
+            onDifficultyMinChange={(v) => {
+              const next = applyDifficultyMinChange(v, difficultyMax);
+              setDifficultyMin(next.min);
+              setDifficultyMax(next.max);
+            }}
+            onDifficultyMaxChange={(v) => {
+              const next = applyDifficultyMaxChange(difficultyMin, v);
+              setDifficultyMin(next.min);
+              setDifficultyMax(next.max);
+            }}
             onTempoChange={setTempoState}
             onChoiceCountChange={setChoiceCount}
             onShowRomanChange={setShowRoman}
@@ -571,43 +586,47 @@ function TrainerPage(props: TrainerPageProps) {
         <div className="control-row" style={{ marginTop: "0.75rem" }}>
           <div className="control-group">
             <label>Difficulty Min</label>
-            <input
-              type="number"
-              min={1}
-              max={5}
+            <select
               value={props.difficultyMin}
               onChange={(e) => props.onDifficultyMinChange(Number(e.target.value))}
-            />
+            >
+              {DIFFICULTY_OPTIONS.map((value) => (
+                <option key={value} value={value}>{value}</option>
+              ))}
+            </select>
           </div>
           <div className="control-group">
             <label>Difficulty Max</label>
-            <input
-              type="number"
-              min={1}
-              max={5}
+            <select
               value={props.difficultyMax}
               onChange={(e) => props.onDifficultyMaxChange(Number(e.target.value))}
-            />
+            >
+              {DIFFICULTY_OPTIONS.map((value) => (
+                <option key={value} value={value}>{value}</option>
+              ))}
+            </select>
           </div>
           <div className="control-group">
             <label>Tempo (BPM)</label>
-            <input
-              type="number"
-              min={40}
-              max={240}
+            <select
               value={props.tempo}
               onChange={(e) => props.onTempoChange(Number(e.target.value))}
-            />
+            >
+              {TEMPO_OPTIONS.map((value) => (
+                <option key={value} value={value}>{value}</option>
+              ))}
+            </select>
           </div>
           <div className="control-group">
             <label>Choices</label>
-            <input
-              type="number"
-              min={2}
-              max={8}
+            <select
               value={props.choiceCount}
               onChange={(e) => props.onChoiceCountChange(Number(e.target.value))}
-            />
+            >
+              {CHOICE_COUNT_OPTIONS.map((value) => (
+                <option key={value} value={value}>{value}</option>
+              ))}
+            </select>
           </div>
           <button className="btn btn-primary" onClick={props.onGenerateExercise}>
             Generate Exercise
