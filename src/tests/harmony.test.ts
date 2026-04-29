@@ -3,6 +3,7 @@ import { romanToChordSymbol, progressionToChordSymbols, getScaleDegree, romanToC
 import { getFunctionGroup } from "../core/harmony/functionGroups";
 import { keyLabel, SUPPORTED_KEYS } from "../core/harmony/keys";
 import { chordNotes, chordRoot } from "../core/harmony/chordSymbols";
+import * as Tonal from "tonal";
 
 describe("Roman → Chord Symbol Conversion", () => {
   it("I in C major → C", () => {
@@ -139,13 +140,39 @@ describe("Function Groups", () => {
 });
 
 describe("Keys", () => {
-  it("has 24 supported keys (12 major + 12 minor)", () => {
-    expect(SUPPORTED_KEYS).toHaveLength(24);
+  it("has the supported major keys in circle-of-fifths order", () => {
+    const majorKeys = SUPPORTED_KEYS.filter((key) => key.mode === "major").map((key) => key.tonic);
+
+    expect(majorKeys).toEqual(["C", "G", "D", "A", "E", "B", "F#", "F", "Bb", "Eb", "Ab", "Db", "Gb"]);
+  });
+
+  it("has relative minor keys matching the supported major keys", () => {
+    const minorKeys = SUPPORTED_KEYS.filter((key) => key.mode === "minor").map((key) => key.tonic);
+
+    expect(minorKeys).toEqual(["A", "E", "B", "F#", "C#", "G#", "D#", "D", "G", "C", "F", "Bb", "Eb"]);
+  });
+
+  it("has exactly 26 supported keys (13 major + 13 relative minor)", () => {
+    expect(SUPPORTED_KEYS).toHaveLength(26);
   });
 
   it("keyLabel returns readable format", () => {
-    expect(keyLabel({ tonic: "C", mode: "major" })).toBe("C major");
-    expect(keyLabel({ tonic: "A", mode: "minor" })).toBe("A minor");
+    expect(keyLabel({ tonic: "C", mode: "major" })).toBe("C");
+    expect(keyLabel({ tonic: "A", mode: "minor" })).toBe("A");
+  });
+
+  it("generates valid chord symbols for every supported key", () => {
+    const romansByMode = {
+      major: ["I", "ii", "iii", "IV", "V", "vi", "vii°"],
+      minor: ["i", "ii°", "III", "iv", "v", "V", "V7", "VI", "VII", "vii°"],
+    } as const;
+
+    for (const key of SUPPORTED_KEYS) {
+      for (const roman of romansByMode[key.mode]) {
+        const symbol = romanToChordSymbol(roman, key);
+        expect(Tonal.Chord.get(symbol).empty, `${roman} in ${keyLabel(key)} produced ${symbol}`).toBe(false);
+      }
+    }
   });
 });
 
