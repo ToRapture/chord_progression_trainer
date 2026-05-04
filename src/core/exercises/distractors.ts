@@ -34,7 +34,16 @@ export function generateDistractorProgressions(
   );
 
   const preferSameLength = others.filter((p) => p.roman.length === answer.roman.length);
-  const pool = preferSameLength.length >= count * 3 ? preferSameLength : others;
+  const raw = preferSameLength.length >= count * 3 ? preferSameLength : others;
+
+  const seen = new Map<string, ProgressionTemplate>();
+  for (const p of raw) {
+    const label = p.roman.join(" → ");
+    if (!seen.has(label)) {
+      seen.set(label, p);
+    }
+  }
+  const pool = Array.from(seen.values());
 
   return shuffleArray(pool).slice(0, count);
 }
